@@ -94,7 +94,7 @@ class WorkloadSchedulingSimulation:
                 # print(f"Free slots: {self.free_slots}")
                 # print(f"Current configuration: {self.current_configuration}")
 
-    def _schedule(self):
+    def _scheduling_policy(self):
         """
         Schedule the kernels in the waiting queue to the running queue.
         NOTE: All the schedulable kernels are scheduled in the same time step.
@@ -107,36 +107,7 @@ class WorkloadSchedulingSimulation:
                 # TODO: Change with models prediction
                 # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
 
-                # Create feature (TODO: Make CPU usage more realistic)
-                cpu_usage = {"user": 50.0, "kernel": 25.0, "idle": 25.0}
-                feature = cpu_usage | self.current_configuration
-                feature["Main"] = kernel["kernel_id"]
-                tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
-                feature[tmp_kernel_name] = kernel["cu"]
-
-                # Predict the time of execution of the kernel
-                time_prediction = round(self.models[-1].predict_one(feature), 3)
-                # Update the end time of the kernel
-                kernel["end_time"] = self.current_time + kernel["num_executions"] * time_prediction
-                # print(feature)
-                # print(time_prediction)
-                # print(kernel["num_executions"])
-                # print(kernel["end_time"])
-
-                # Move the kernel to the running queue
-                self.running_queue.append(kernel)
-                # Sort the running queue by end time (eases the check of finished kernels)
-                self.running_queue.sort(key=lambda x: x['end_time'])
-                # Remove the kernel from the waiting queue
-                self.waiting_queue.remove(kernel)
-                # Update the free slots
-                self.free_slots -= kernel["cu"]
-                # Update the current configuration
-                self.current_configuration[self.kernel_names[kernel["kernel_id"]]] += kernel["cu"]
-                # print(f"Kernel {kernel['tmp_id']} started at {self.current_time} with {kernel['cu']} CUs")
-                # print(f"Free slots: {self.free_slots}")
-                # print(f"Current configuration: {self.current_configuration}")
-                return # Schedule only one kernel per time step
+                return kernel # Schedule only one kernel per time step
 
             # Check if there are free slots available
             if self.free_slots == 0:
@@ -145,6 +116,49 @@ class WorkloadSchedulingSimulation:
         # Indicate that there are no kernels that can be executed
         # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
         self.are_kernels_executable = False
+        return None
+
+    def _execute_kernel(self, kernel):
+        """
+        Execute the kernel.
+        """
+
+        # Create feature (TODO: Make CPU usage more realistic)
+        cpu_usage = {"user": 50.0, "kernel": 25.0, "idle": 25.0}
+        feature = cpu_usage | self.current_configuration
+        feature["Main"] = kernel["kernel_id"]
+        tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
+        feature[tmp_kernel_name] = kernel["cu"]
+
+        # Predict the time of execution of the kernel
+        time_prediction = round(self.models[-1].predict_one(feature), 3)
+        # Update the end time of the kernel
+        kernel["end_time"] = self.current_time + kernel["num_executions"] * time_prediction
+        # print(feature)
+        # print(time_prediction)
+        # print(kernel["num_executions"])
+        # print(kernel["end_time"])
+
+        # Move the kernel to the running queue
+        self.running_queue.append(kernel)
+        # Sort the running queue by end time (eases the check of finished kernels)
+        self.running_queue.sort(key=lambda x: x['end_time'])
+        # Remove the kernel from the waiting queue
+        self.waiting_queue.remove(kernel)
+        # Update the free slots
+        self.free_slots -= kernel["cu"]
+        # Update the current configuration
+        self.current_configuration[self.kernel_names[kernel["kernel_id"]]] += kernel["cu"]
+        # print(f"Kernel {kernel['tmp_id']} started at {self.current_time} with {kernel['cu']} CUs")
+        # print(f"Free slots: {self.free_slots}")
+        # print(f"Current configuration: {self.current_configuration}")
+
+    def _schedule(self):
+
+        kernel = self._scheduling_policy()
+        if kernel:
+            self._execute_kernel(kernel)
+
 
     def run(self):
         """
