@@ -24,11 +24,10 @@ class WorkloadSchedulingSimulation:
     Simulation of a workload scheduling system with online learning models.
     """
 
-    def __init__(self, models, workload, schdeuler, board):
+    def __init__(self, models, workload, scheduling_policy, board):
         self.kernel_names = ["aes", "bulk", "crs", "kmp", "knn", "merge", "nw", "queue", "stencil2d", "stencil3d", "strided"]
         self.models = models
         self.workload = workload.copy()
-        self.scheduler = schdeuler
         self.waiting_queue = []
         self.running_queue = []
         self.finished_queue = []
@@ -37,6 +36,18 @@ class WorkloadSchedulingSimulation:
         self.current_time = 0.0
         self.time_step = 0.001
         self.are_kernels_executable = False  # Flag to check if there are kernels that can be executed (i.e., new arrivals or finished kernels. Set to False to avoid scheduling kernels when waiting queue has been completely checked)
+
+        # Dictionary to map scheduling policies to corresponding methods
+        self.scheduling_methods = {
+            'FCFS': self._fist_come_first_served_policy,
+            'STACK': self._stack_policy,
+        }
+
+        # Set the scheduling policy
+        if scheduling_policy in self.scheduling_methods:
+            self.scheduler = self.scheduling_methods[scheduling_policy]
+        else:
+            raise ValueError(f"Invalid scheduling policy: {scheduling_policy}")
 
     def _update_current_time(self):
         """
@@ -94,30 +105,6 @@ class WorkloadSchedulingSimulation:
                 # print(f"Free slots: {self.free_slots}")
                 # print(f"Current configuration: {self.current_configuration}")
 
-    def _scheduling_policy(self):
-        """
-        Schedule the kernels in the waiting queue to the running queue.
-        NOTE: All the schedulable kernels are scheduled in the same time step.
-        """
-        # TODO: Implement the scheduling algorithm
-
-        for kernel in self.waiting_queue:
-            # Check if the kernel can be scheduled (i.e., there are free slots available and the kernel has not been scheduled yet(artico3))
-            if kernel["cu"] <= self.free_slots and self.current_configuration[self.kernel_names[kernel["kernel_id"]]] == 0:
-                # TODO: Change with models prediction
-                # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
-
-                return kernel # Schedule only one kernel per time step
-
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
-
-        # Indicate that there are no kernels that can be executed
-        # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
-        self.are_kernels_executable = False
-        return None
-
     def _execute_kernel(self, kernel):
         """
         Execute the kernel.
@@ -154,11 +141,63 @@ class WorkloadSchedulingSimulation:
         # print(f"Current configuration: {self.current_configuration}")
 
     def _schedule(self):
+        """
+        Schedule the kernels based on the scheduling policy.
+        """
 
-        kernel = self._scheduling_policy()
+        # Grab the kernel to be executed based on the scheduling policy
+        kernel = self.scheduler()
+        # Execute the kernel
         if kernel:
             self._execute_kernel(kernel)
 
+    def _fist_come_first_served_policy(self):
+        """
+        Schedule the kernels in the waiting queue to the running queue.
+        NOTE: Just one scheduling decition is made in each time step.
+        """
+        # TODO: Implement the scheduling algorithm
+
+        for kernel in self.waiting_queue:
+            # Check if the kernel can be scheduled (i.e., there are free slots available and the kernel has not been scheduled yet(artico3))
+            if kernel["cu"] <= self.free_slots and self.current_configuration[self.kernel_names[kernel["kernel_id"]]] == 0:
+                # TODO: Change with models prediction
+                # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
+
+                return kernel # Schedule only one kernel per time step
+
+            # Check if there are free slots available
+            if self.free_slots == 0:
+                break  # Stop scheduling when no free slots are available
+
+        # Indicate that there are no kernels that can be executed
+        # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
+        self.are_kernels_executable = False
+        return None
+
+    def _stack_policy(self):
+        """
+        Schedule the kernels in the waiting queue to the running queue.
+        NOTE: Just one scheduling decition is made in each time step.
+        """
+        # TODO: Implement the scheduling algorithm
+
+        for kernel in self.waiting_queue[::-1]:
+            # Check if the kernel can be scheduled (i.e., there are free slots available and the kernel has not been scheduled yet(artico3))
+            if kernel["cu"] <= self.free_slots and self.current_configuration[self.kernel_names[kernel["kernel_id"]]] == 0:
+                # TODO: Change with models prediction
+                # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
+
+                return kernel # Schedule only one kernel per time step
+
+            # Check if there are free slots available
+            if self.free_slots == 0:
+                break  # Stop scheduling when no free slots are available
+
+        # Indicate that there are no kernels that can be executed
+        # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
+        self.are_kernels_executable = False
+        return None
 
     def run(self):
         """
@@ -298,7 +337,7 @@ def main():
     #
 
     # Create WorkloadSchedulingSimulation object
-    simulation = WorkloadSchedulingSimulation(online_models_list, workload[:100], None, "ZCU")
+    simulation = WorkloadSchedulingSimulation(online_models_list, workload[:100], "FCFS", "ZCU")
 
     # Run simulation
     simulation.run()
