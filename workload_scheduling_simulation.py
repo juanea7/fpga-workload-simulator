@@ -34,8 +34,8 @@ class WorkloadSchedulingSimulation:
         self.finished_queue = []
         self.current_configuration = {"aes": 0, "bulk": 0, "crs": 0, "kmp": 0, "knn": 0, "merge": 0, "nw": 0, "queue": 0, "stencil2d": 0, "stencil3d": 0, "strided": 0}
         self.free_slots = 8 if board == "ZCU" else 4
-        self.current_time = Decimal('0.0')
-        self.time_step = Decimal('0.001')
+        self.current_time = 0.0
+        self.time_step = 0.001
         self.are_kernels_executable = False  # Flag to check if there are kernels that can be executed (i.e., new arrivals or finished kernels. Set to False to avoid scheduling kernels when waiting queue has been completely checked)
 
     def _update_current_time(self):
@@ -133,10 +133,10 @@ class WorkloadSchedulingSimulation:
                 self.free_slots -= kernel["cu"]
                 # Update the current configuration
                 self.current_configuration[self.kernel_names[kernel["kernel_id"]]] += kernel["cu"]
-                # break # Schedule only one kernel per time step
                 # print(f"Kernel {kernel['tmp_id']} started at {self.current_time} with {kernel['cu']} CUs")
                 # print(f"Free slots: {self.free_slots}")
                 # print(f"Current configuration: {self.current_configuration}")
+                return # Schedule only one kernel per time step
 
             # Check if there are free slots available
             if self.free_slots == 0:
@@ -284,7 +284,7 @@ def main():
     #
 
     # Create WorkloadSchedulingSimulation object
-    simulation = WorkloadSchedulingSimulation(online_models_list, workload[:10], None, "ZCU")
+    simulation = WorkloadSchedulingSimulation(online_models_list, workload[:100], None, "ZCU")
 
     # Run simulation
     simulation.run()
