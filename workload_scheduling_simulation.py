@@ -13,10 +13,10 @@ import pickle
 import random
 import pprint
 from decimal import Decimal
-
 import time
+import ctypes as ct
 
-#from incremental_learning import online_models as om
+from incremental_learning import online_models as om
 
 
 class WorkloadSchedulingSimulation:
@@ -25,16 +25,15 @@ class WorkloadSchedulingSimulation:
     """
 
     def __init__(self, models, workload, schdeuler, board):
+        self.kernel_names = ["aes", "bulk", "crs", "kmp", "knn", "merge", "nw", "queue", "stencil2d", "stencil3d", "strided"]
         self.models = models
         self.workload = workload.copy()
         self.scheduler = schdeuler
         self.waiting_queue = []
         self.running_queue = []
         self.finished_queue = []
-        self.blocked_ids = []
+        self.current_configuration = {"aes": 0, "bulk": 0, "crs": 0, "kmp": 0, "knn": 0, "merge": 0, "nw": 0, "queue": 0, "stencil2d": 0, "stencil3d": 0, "strided": 0}
         self.free_slots = 8 if board == "ZCU" else 4
-        # self.current_time = 0.0
-        # self.time_step = 0.001
         self.current_time = Decimal('0.0')
         self.time_step = Decimal('0.001')
         self.are_kernels_executable = False  # Flag to check if there are kernels that can be executed (i.e., new arrivals or finished kernels. Set to False to avoid scheduling kernels when waiting queue has been completely checked)
@@ -87,10 +86,13 @@ class WorkloadSchedulingSimulation:
                 self.running_queue.remove(kernel)
                 # Update the free slots
                 self.free_slots += kernel["cu"]
+                # Update the current configuration
+                self.current_configuration[self.kernel_names[kernel["kernel_id"]]] -= kernel["cu"]
                 # Indicate that there are kernels that can be executed
                 self.are_kernels_executable = True
                 # print(f"Kernel {kernel['tmp_id']} finished at {self.current_time} with {kernel['cu']} CUs")
                 # print(f"Free slots: {self.free_slots}")
+                # print(f"Current configuration: {self.current_configuration}")
 
     def _schedule(self):
         """
@@ -100,10 +102,27 @@ class WorkloadSchedulingSimulation:
         # TODO: Implement the scheduling algorithm
 
         for kernel in self.waiting_queue:
-            # Check if the kernel can be scheduled
-            if kernel["cu"] <= self.free_slots:
+            # Check if the kernel can be scheduled (i.e., there are free slots available and the kernel has not been scheduled yet(artico3))
+            if kernel["cu"] <= self.free_slots and self.current_configuration[self.kernel_names[kernel["kernel_id"]]] == 0:
                 # TODO: Change with models prediction
-                kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
+                # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
+
+                # Create feature (TODO: Make CPU usage more realistic)
+                cpu_usage = {"user": 50.0, "kernel": 25.0, "idle": 25.0}
+                feature = cpu_usage | self.current_configuration
+                feature["Main"] = kernel["kernel_id"]
+                tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
+                feature[tmp_kernel_name] = kernel["cu"]
+
+                # Predict the time of execution of the kernel
+                time_prediction = round(self.models[-1].predict_one(feature), 3)
+                # Update the end time of the kernel
+                kernel["end_time"] = self.current_time + kernel["num_executions"] * time_prediction
+                # print(feature)
+                # print(time_prediction)
+                # print(kernel["num_executions"])
+                # print(kernel["end_time"])
+
                 # Move the kernel to the running queue
                 self.running_queue.append(kernel)
                 # Sort the running queue by end time (eases the check of finished kernels)
@@ -112,9 +131,12 @@ class WorkloadSchedulingSimulation:
                 self.waiting_queue.remove(kernel)
                 # Update the free slots
                 self.free_slots -= kernel["cu"]
+                # Update the current configuration
+                self.current_configuration[self.kernel_names[kernel["kernel_id"]]] += kernel["cu"]
                 # break # Schedule only one kernel per time step
                 # print(f"Kernel {kernel['tmp_id']} started at {self.current_time} with {kernel['cu']} CUs")
                 # print(f"Free slots: {self.free_slots}")
+                # print(f"Current configuration: {self.current_configuration}")
 
             # Check if there are free slots available
             if self.free_slots == 0:
@@ -141,9 +163,6 @@ class WorkloadSchedulingSimulation:
 
             # Update the simulation time
             self._update_current_time()
-            # self.current_time += self.time_step
-
-            # print(f"Current time: {current_time}")
 
             # arrival_start = time.time()
             # Check if there are new arrivals
@@ -204,6 +223,7 @@ def generate_workload(workload_information_dict, board):
     return workload
 
 def main():
+    # TODO: Add argparse to parse arguments
 
     # Set a fixed seed for reproducibility
     random.seed(42)
@@ -252,36 +272,19 @@ def main():
     # Models Initialization
     #
 
-    # models/model_error_figures/adapt_models.pkl
-
     # Open models files
-    # with open("./model_error_figures/online_models.pkl", 'rb') as file:
-    #     online_models = pickle.load(file)
-
-    # print(type(online_models))
-
-    # for model in online_models._models:
+    with open("models/model_error_figures/adapt_models.pkl", 'rb') as file:
+        online_models_list = pickle.load(file)
+    # print(type(online_models_list))
+    # for model in online_models_list:
     #     print(type(model))
-
-
-    # def _predict_one(self, features_dict):
-    #         """Make a prediction based on given features for each model."""
-
-    #         # Make a prediction for each model
-    #         return [model.predict_one(features_dict) for model in self._models]
-
-    # def _predict_one(self, features_dict):
-    #         """Make a prediction based on given features for each model."""
-
-    #         # Make a prediction for each model
-    #         return [model.predict_one(features_dict) for model in self._models]
 
     #
     # Scheduler Initialization
     #
 
     # Create WorkloadSchedulingSimulation object
-    simulation = WorkloadSchedulingSimulation(None, workload, None, "ZCU")
+    simulation = WorkloadSchedulingSimulation(online_models_list, workload[:10], None, "ZCU")
 
     # Run simulation
     simulation.run()
