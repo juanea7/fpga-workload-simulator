@@ -113,7 +113,7 @@ class WorkloadSchedulingSimulation:
         """
 
         configuration_changed = False
-        for kernel in self.running_queue:
+        for kernel in self.running_queue[:]:
             # Check if the kernel has finished
             if kernel["end_time"] <= self.current_time:
                 # Move the kernel to the finished queue
@@ -136,7 +136,7 @@ class WorkloadSchedulingSimulation:
         if configuration_changed:
             # Update the end time of the kernels (since the configuration is different now)
             for kernel in self.running_queue:
-                kernel = self._update_kernel_end_time(kernel)
+                self._update_kernel_end_time(kernel)
             # Sort the running queue by end time (eases the check of finished kernels)
             self.running_queue.sort(key=lambda x: x['end_time'])
 
@@ -146,8 +146,8 @@ class WorkloadSchedulingSimulation:
         """
 
         # Create feature (TODO: Make CPU usage more realistic)
-        cpu_usage = self.cpu_usage.copy()
-        feature = cpu_usage | self.current_configuration
+        # cpu_usage = self.cpu_usage.copy()
+        feature = self.cpu_usage | self.current_configuration
         feature["Main"] = kernel["kernel_id"]
         tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
         feature[tmp_kernel_name] = kernel["cu"]
@@ -188,8 +188,6 @@ class WorkloadSchedulingSimulation:
         # print("Kernel new end time: ", kernel["end_time"])
         # print("\n")
 
-        return kernel
-
     def _execute_kernel(self, kernel):
         """
         Execute the kernel.
@@ -209,7 +207,7 @@ class WorkloadSchedulingSimulation:
 
         # Update the end time of the kernels
         for kernel in self.running_queue:
-            kernel = self._update_kernel_end_time(kernel)
+            self._update_kernel_end_time(kernel)
 
         # Sort the running queue by end time (eases the check of finished kernels)
         self.running_queue.sort(key=lambda x: x['end_time'])
@@ -223,8 +221,13 @@ class WorkloadSchedulingSimulation:
         Schedule the kernels based on the scheduling policy.
         """
 
+        # Check if there are kernels that can be executed
+        if not self.are_kernels_executable or self.free_slots == 0:
+            return
+
         # Grab the kernel to be executed based on the scheduling policy
         kernel = self.scheduler()
+
         # Execute the kernel
         if kernel:
             self._execute_kernel(kernel)
@@ -245,10 +248,6 @@ class WorkloadSchedulingSimulation:
 
                 return kernel # Schedule only one kernel per time step
 
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
-
         # Indicate that there are no kernels that can be executed
         # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
         self.are_kernels_executable = False
@@ -268,10 +267,6 @@ class WorkloadSchedulingSimulation:
                 # kernel["end_time"] = self.current_time + random.choice([1.0,1.5,2.0,2.5,3.0]) * kernel["num_executions"]
 
                 return kernel # Schedule only one kernel per time step
-
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
 
         # Indicate that there are no kernels that can be executed
         # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
@@ -299,10 +294,6 @@ class WorkloadSchedulingSimulation:
                 # Check if there are enough kernels to compare
                 if len(kernels_to_compare) == num_kernels_to_compare: break
 
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
-
         # Check if there are kernels to compare
         if len(kernels_to_compare) == 0:
             # Indicate that there are no kernels that can be executed
@@ -329,8 +320,7 @@ class WorkloadSchedulingSimulation:
 
         for kernel in kernels_to_compare:
             # Create feature (TODO: Make CPU usage more realistic)
-            cpu_usage = self.cpu_usage.copy()
-            feature = cpu_usage | self.current_configuration
+            feature = self.cpu_usage | self.current_configuration
             feature["Main"] = kernel["kernel_id"]
             tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
             feature[tmp_kernel_name] = kernel["cu"]
@@ -379,10 +369,6 @@ class WorkloadSchedulingSimulation:
                 # Check if there are enough kernels to compare
                 if len(kernels_to_compare) == num_kernels_to_compare: break
 
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
-
         # Check if there are kernels to compare
         if len(kernels_to_compare) == 0:
             # Indicate that there are no kernels that can be executed
@@ -412,8 +398,7 @@ class WorkloadSchedulingSimulation:
             # Current configuration
             # print("current")
             # Create feature (TODO: Make CPU usage more realistic)
-            cpu_usage = self.cpu_usage.copy()
-            feature = cpu_usage | self.current_configuration
+            feature = self.cpu_usage | self.current_configuration
             tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
             feature[tmp_kernel_name] = kernel["cu"]
 
@@ -487,10 +472,6 @@ class WorkloadSchedulingSimulation:
                 # Check if there are enough kernels to compare
                 if len(kernels_to_compare) == num_kernels_to_compare: break
 
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
-
         # Check if there are kernels to compare
         if len(kernels_to_compare) == 0:
             # Indicate that there are no kernels that can be executed
@@ -520,8 +501,7 @@ class WorkloadSchedulingSimulation:
             # Current configuration
             # print("current")
             # Create feature (TODO: Make CPU usage more realistic)
-            cpu_usage = self.cpu_usage.copy()
-            feature = cpu_usage | self.current_configuration
+            feature = self.cpu_usage | self.current_configuration
             feature["Main"] = kernel["kernel_id"]
             tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
             feature[tmp_kernel_name] = kernel["cu"]
@@ -535,8 +515,7 @@ class WorkloadSchedulingSimulation:
             # Alone configuration
             # print("alone")
             # Create feature (TODO: Make CPU usage more realistic)
-            cpu_usage = self.cpu_usage.copy()
-            feature = cpu_usage | alone_configuration
+            feature = self.cpu_usage | alone_configuration
             feature["Main"] = kernel["kernel_id"]
             tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
             feature[tmp_kernel_name] = kernel["cu"]
@@ -572,9 +551,6 @@ class WorkloadSchedulingSimulation:
 
         num_kernels_to_compare = 2
         kernels_to_compare = []
-
-        alone_configuration = {"aes": 0, "bulk": 0, "crs": 0, "kmp": 0, "knn": 0, "merge": 0, "nw": 0, "queue": 0, "stencil2d": 0, "stencil3d": 0, "strided": 0}
-
         # Get the kernels to compare
         for kernel in self.waiting_queue:
             # Check if the kernel can be scheduled (i.e., there are free slots available and the kernel has not been scheduled yet(artico3))
@@ -585,10 +561,6 @@ class WorkloadSchedulingSimulation:
 
                 # Check if there are enough kernels to compare
                 if len(kernels_to_compare) == num_kernels_to_compare: break
-
-            # Check if there are free slots available
-            if self.free_slots == 0:
-                break  # Stop scheduling when no free slots are available
 
         # Check if there are kernels to compare
         if len(kernels_to_compare) == 0:
@@ -626,8 +598,7 @@ class WorkloadSchedulingSimulation:
                 # Current configuration
                 # print("current")
                 # Create feature (TODO: Make CPU usage more realistic)
-                cpu_usage = self.cpu_usage.copy()
-                feature = cpu_usage | self.current_configuration
+                feature = self.cpu_usage | self.current_configuration
                 tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
                 feature[tmp_kernel_name] = cu_option
 
@@ -706,32 +677,32 @@ class WorkloadSchedulingSimulation:
             # Update CPU usage
             self._update_cpu_usage()
 
-            # arrival_start = time.time()
+            arrival_start = time.time()
             # Check if there are new arrivals
             self._check_new_arrivals()
-            # arrival_end = time.time()
-            # arrival += arrival_end - arrival_start
+            arrival_end = time.time()
+            arrival += arrival_end - arrival_start
 
-            # finish_start = time.time()
+            finish_start = time.time()
             # Check if there are finished kernels
             self._check_finished_kernels()
-            # finish_end = time.time()
-            # finish += finish_end - finish_start
+            finish_end = time.time()
+            finish += finish_end - finish_start
 
-            # schedule_start = time.time()
+            schedule_start = time.time()
             # Schedule the kernels
             self._schedule()
-            # schedule_end = time.time()
-            # schedule += schedule_end - schedule_start
+            schedule_end = time.time()
+            schedule += schedule_end - schedule_start
 
         total_end = time.time()
 
         simulation_time_sec = self.finished_queue[-1]['end_time'] / 1000
-        # print(f"Simulation time: {simulation_time_sec} s")
-        # print(f"Wall-clock time: {total_end - total_start} s")
-        # print(f"Arrival time: {arrival}")
-        # print(f"Finish time: {finish}")
-        # print(f"Schedule time: {schedule}")
+        print(f"Simulation time: {simulation_time_sec} s")
+        print(f"Wall-clock time: {total_end - total_start} s")
+        print(f"Arrival time: {arrival}")
+        print(f"Finish time: {finish}")
+        print(f"Schedule time: {schedule}")
 
         print("self.tmp_kernel_default_count", self.tmp_kernel_default_count)
 
