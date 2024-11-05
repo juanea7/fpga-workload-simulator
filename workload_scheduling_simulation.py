@@ -111,6 +111,8 @@ class WorkloadSchedulingSimulation:
         """
         Check if there are finished kernels in the running queue and move them to the finished queue.
         """
+
+        configuration_changed = False
         for kernel in self.running_queue:
             # Check if the kernel has finished
             if kernel["end_time"] <= self.current_time:
@@ -125,9 +127,18 @@ class WorkloadSchedulingSimulation:
                 # Indicate that there are kernels that can be executed
                 self.are_kernels_executable = True
                 self.kernels_in_execution -= 1
+                configuration_changed = True
                 # print(f"Kernel {kernel['tmp_id']} finished at {self.current_time} with {kernel['cu']} CUs")
                 # print(f"Free slots: {self.free_slots}")
                 # print(f"Current configuration: {self.current_configuration}")
+
+        # Check whether the configuration has changed
+        if configuration_changed:
+            # Update the end time of the kernels (since the configuration is different now)
+            for kernel in self.running_queue:
+                kernel = self._update_kernel_end_time(kernel)
+            # Sort the running queue by end time (eases the check of finished kernels)
+            self.running_queue.sort(key=lambda x: x['end_time'])
 
     def _update_kernel_end_time(self, kernel):
         """
