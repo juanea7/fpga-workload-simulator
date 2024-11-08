@@ -11,6 +11,7 @@ Description : This script:
 import struct
 import pickle
 import random
+import sys
 import pprint
 from decimal import Decimal
 import time
@@ -18,6 +19,7 @@ import ctypes as ct
 import copy
 
 from incremental_learning import online_models as om
+import argparse
 
 
 class WorkloadSchedulingSimulation:
@@ -753,7 +755,13 @@ def generate_workload(workload_information_dict, board):
     return workload
 
 def main():
-    # TODO: Add argparse to parse arguments
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="Simulation of a workload execution with the FPGA Workload Manager based on predictions from incremental learning models trained on-chip")
+    parser.add_argument("--models_path", required=True, help="Path to the models")
+    parser.add_argument("--workload_path", required=True, help="Path to the workload")
+    parser.add_argument("--scheduling_policy", required=True, choices=['FCFS', 'STACK', 'SJF', 'LIF', 'CU'], help="Scheduling policy to use")
+    parser.add_argument("--board", required=True, choices=['ZCU', 'PYNQ', 'AU250'], help="Type of board")
+    args = parser.parse_args(sys.argv[1:])
 
     # Set a fixed seed for reproducibility
     random.seed(42)
@@ -763,8 +771,9 @@ def main():
     #
 
     # Read workload information from files
+    # TODO: Make this more general (i.e., read all the files in the workload directory)
     inter_arrival_values = []
-    with open("workload/inter_arrival_0.bin", "rb") as file:
+    with open(f"{args.workload_path}/inter_arrival_0.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -772,7 +781,7 @@ def main():
             inter_arrival_values.append(struct.unpack('f', value)[0])
 
     kernel_id_values = []
-    with open("workload/kernel_id_0.bin", "rb") as file:
+    with open(f"{args.workload_path}/kernel_id_0.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -780,7 +789,7 @@ def main():
             kernel_id_values.append(struct.unpack('i', value)[0])
 
     num_executions_values = []
-    with open("workload/num_executions_0.bin", "rb") as file:
+    with open(f"{args.workload_path}/num_executions_0.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -795,11 +804,11 @@ def main():
     }
 
     # Construct the workload
-    workload_0 = generate_workload(workload_information_dict, "ZCU")
+    workload_0 = generate_workload(workload_information_dict, args.board)
 
     # Read workload information from files
     inter_arrival_values = []
-    with open("workload/inter_arrival_1.bin", "rb") as file:
+    with open(f"{args.workload_path}/inter_arrival_1.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -807,7 +816,7 @@ def main():
             inter_arrival_values.append(struct.unpack('f', value)[0])
 
     kernel_id_values = []
-    with open("workload/kernel_id_1.bin", "rb") as file:
+    with open(f"{args.workload_path}/kernel_id_1.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -815,7 +824,7 @@ def main():
             kernel_id_values.append(struct.unpack('i', value)[0])
 
     num_executions_values = []
-    with open("workload/num_executions_1.bin", "rb") as file:
+    with open(f"{args.workload_path}/num_executions_1.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -830,11 +839,11 @@ def main():
     }
 
     # Construct the workload
-    workload_1 = generate_workload(workload_information_dict, "ZCU")
+    workload_1 = generate_workload(workload_information_dict, args.board)
 
     # Read workload information from files
     inter_arrival_values = []
-    with open("workload/inter_arrival_2.bin", "rb") as file:
+    with open(f"{args.workload_path}/inter_arrival_2.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -842,7 +851,7 @@ def main():
             inter_arrival_values.append(struct.unpack('f', value)[0])
 
     kernel_id_values = []
-    with open("workload/kernel_id_2.bin", "rb") as file:
+    with open(f"{args.workload_path}/kernel_id_2.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -850,7 +859,7 @@ def main():
             kernel_id_values.append(struct.unpack('i', value)[0])
 
     num_executions_values = []
-    with open("workload/num_executions_2.bin", "rb") as file:
+    with open(f"{args.workload_path}/num_executions_2.bin", "rb") as file:
         while True:
             value = file.read(4)
             if not value:
@@ -865,7 +874,7 @@ def main():
     }
 
     # Construct the workload
-    workload_2 = generate_workload(workload_information_dict, "ZCU")
+    workload_2 = generate_workload(workload_information_dict, args.board)
     # pprint.pprint(workload[:10])
 
     #
@@ -873,7 +882,7 @@ def main():
     #
 
     # Open models files
-    with open("models/model_error_figures/adapt_models.pkl", 'rb') as file:
+    with open(args.models_path, 'rb') as file:
         online_models_list = pickle.load(file)
     # print(type(online_models_list))
     # for model in online_models_list:
@@ -883,9 +892,9 @@ def main():
     # Scheduler Initialization
     #
 
-    sim_0 = WorkloadSchedulingSimulation(online_models_list, workload_0, "CU", "ZCU")
-    sim_1 = WorkloadSchedulingSimulation(online_models_list, workload_1, "CU", "ZCU")
-    sim_2 = WorkloadSchedulingSimulation(online_models_list, workload_2, "CU", "ZCU")
+    sim_0 = WorkloadSchedulingSimulation(online_models_list, workload_0, args.scheduling_policy, args.board)
+    sim_1 = WorkloadSchedulingSimulation(online_models_list, workload_1, args.scheduling_policy, args.board)
+    sim_2 = WorkloadSchedulingSimulation(online_models_list, workload_2, args.scheduling_policy, args.board)
 
     simulations = [sim_0, sim_1, sim_2]
 
