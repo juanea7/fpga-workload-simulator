@@ -18,6 +18,27 @@ The FPGA Workload Simulator is designed to simulate the behavior of dynamic work
 - Provides performance metrics and analysis
 - Easy to configure and extend
 
+## Structure
+
+```text
+fpga-workload-simulator/
+├── clone_incremental_learning_module.sh     # Script clone IL module
+├── models/                                  # Pre-trained models
+│   ├── adapt_models.pkl
+│   ├── all_models.pkl
+│   └── ...                                  # Other model variants
+├── simulator/                               # Main simulator implementation
+│   ├── __init__.py
+│   ├── simulation.py                        # Simulator implementation
+│   ├── scheduling_policies.py               # Scheduling policy implementations (FCFS, SJF, etc.)
+├── workloads/                               # Workload generation and loading
+│   ├── data/                                # Pre-exiting workload files
+│   ├── generator.py                         # Utilities to create workload from files
+├── workload_simulator.py                    # Entry-point script that runs the simulation of the workload execution
+└── README.md                                # You are here
+```
+
+
 ## Installation
 
 To install the FPGA Workload Simulator, clone this repository, run the script to clone the Incremental Learning module, and install the requirements:

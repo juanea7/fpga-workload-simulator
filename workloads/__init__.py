@@ -1,0 +1,1 @@
+from .generator import generate_workload_from_files
