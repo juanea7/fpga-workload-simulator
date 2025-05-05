@@ -145,6 +145,7 @@ class WorkloadSchedulingSimulation:
     def _update_kernel_end_time(self, kernel):
         """
         Update the end time of the kernel based on the current time and the time of execution of the kernel.
+        Every kernel running is updated, even kernels that are starting to run.
         """
 
         # Create feature (TODO: Make CPU usage more realistic)
@@ -154,22 +155,31 @@ class WorkloadSchedulingSimulation:
         tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
         feature[tmp_kernel_name] = kernel["cu"]
 
+        # Check if the kernel has started to run
         if kernel["start_time"]:
+            # Kernel is already running
+            # Compute the job performed since last update, from 0 to 1, understading a 1 as the
+            # entire job to finish the execution (even if in last update already 50% has been done)
             job_performed_since_last_update = (self.current_time - kernel["last_update_time"]) / (kernel["end_time"] - kernel["last_update_time"])
+            # Update the job remaining percentage.
+            # Multiplying the job remaining percentage by the job performed since last update
             kernel["job_remaining_percentage"] *= (1 - job_performed_since_last_update)
             kernel["last_update_time"] = self.current_time
         else:
+            # Kernel is starting to run
             kernel["start_time"] = self.current_time
             kernel["last_update_time"] = self.current_time
             kernel["job_remaining_percentage"] = 1
 
         if kernel["job_remaining_percentage"] < 0:
+            # This should never happen, but just in case
             print("Error: kernel['job_remaining_percentage'] < 0")
             print("Current time: ", self.current_time)
             print("Arrival time: ", kernel["arrival_time"])
             print("End time: ", kernel["end_time"])
             print("Job percentage completed: ", kernel['job_remaining_percentage'])
 
+        # Compute the remaining executions of the kernel
         remaining_executions = kernel["num_executions"] * kernel["job_remaining_percentage"]
 
         # Predict the time of execution of the kernel
