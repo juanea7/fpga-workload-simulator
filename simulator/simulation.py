@@ -51,7 +51,8 @@ class WorkloadSimulator:
             'FCFS': fist_come_first_served_policy,
             'STACK': stack_policy,
             'SJF': shortest_job_first_policy,
-            'LIF': least_interaction_first_policy,
+            'LSIF': least_self_interaction_first_policy,
+            'LOIF': least_overall_interaction_first_policy,
             'CU': cu_selection_policy
         }
 
