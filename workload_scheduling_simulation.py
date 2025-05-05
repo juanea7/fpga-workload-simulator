@@ -149,7 +149,7 @@ class WorkloadSchedulingSimulation:
 
         # Create feature (TODO: Make CPU usage more realistic)
         # cpu_usage = self.cpu_usage.copy()
-        feature = self.cpu_usage | self.current_configuration
+        feature = {**self.cpu_usage, **self.current_configuration}
         feature["Main"] = kernel["kernel_id"]
         tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
         feature[tmp_kernel_name] = kernel["cu"]
@@ -600,7 +600,7 @@ class WorkloadSchedulingSimulation:
                 # Current configuration
                 # print("current")
                 # Create feature (TODO: Make CPU usage more realistic)
-                feature = self.cpu_usage | self.current_configuration
+                feature = {**self.cpu_usage, **self.current_configuration}
                 tmp_kernel_name = self.kernel_names[kernel["kernel_id"]]
                 feature[tmp_kernel_name] = cu_option
 
