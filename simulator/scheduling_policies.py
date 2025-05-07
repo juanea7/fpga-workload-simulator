@@ -7,6 +7,9 @@ Description : This file contains functions for implementing different scheduling
 
 """
 
+import numpy as np
+
+
 def fist_come_first_served_policy(self):
     """
     A simple First-Come-First-Served (FCFS) scheduling policy.
@@ -445,3 +448,72 @@ def cu_selection_policy(self):
     # print("Min kernel: ", min_kernel["tmp_id"])
 
     return min_kernel
+
+def csa_policy(self):
+    """
+    A scheduling policy that selects the kernel with the least overall interaction using a CSA.
+    NOTE: Just one scheduling decision is made in each time step.
+    """
+    # TODO: Implement the scheduling algorithm
+
+    num_kernels_to_compare = 4
+    kernels_to_compare = []
+    kernels_to_compare_ids = []
+
+    # Get the schedulable kernels
+    for kernel in self.waiting_queue:
+        # Check if the kernel can be scheduled (i.e., the kernel has not been scheduled yet(artico3))
+        if self.current_configuration[self.kernel_names[kernel["kernel_id"]]] == 0:
+
+            # Check if the its kernel id is already in the list
+            if kernel["kernel_id"] in kernels_to_compare_ids:
+                continue
+            # Store the kernel to compare
+            kernels_to_compare.append(kernel)
+            kernels_to_compare_ids.append(kernel["kernel_id"])
+
+            # Check if there are enough kernels to compare
+            if len(kernels_to_compare) == num_kernels_to_compare: break
+
+    # Check if there are kernels to compare
+    if len(kernels_to_compare) == 0:
+        # Indicate that there are no kernels that can be executed
+        # Since all the schedulable kernels have been scheduled (wait for arrival of new kernels or finish of running kernels)
+        self.are_kernels_executable = False
+        return None
+
+    # Increase the total scheduling decisions
+    self.total_scheduling_decisions += 1
+
+    # A list of running kernels, showing the cus per kernel_id
+    running_kernels = np.zeros(len(self.kernel_names))
+    kernel_ids = [kernel["kernel_id"] for kernel in self.running_queue]
+    cus = [kernel["cu"] for kernel in self.running_queue]
+    running_kernels[kernel_ids] = cus
+
+    # A list of schedulable kernels, represented by their kernel_id (a index in the kernel_names list)
+    schedulable_kernels = [kernel["kernel_id"] for kernel in kernels_to_compare]
+
+    # Schedule
+    config_schedulable_kernels = self.csa_scheduler.run_standalone(n_crows=5,
+                                      max_iter=10,
+                                      awareness_prob=0.4,
+                                      flight_length=1.5,
+                                      running_kernels=running_kernels,
+                                      schedulable_kernels=schedulable_kernels,
+                                      cpu_usage=self.cpu_usage)
+
+    print("Running kernels: ", running_kernels)
+    print("config_schedulable_kernels", config_schedulable_kernels)
+
+    # Get the indexes the kernels to schedule
+    non_zero_kernels = np.nonzero(config_schedulable_kernels)[0]
+
+    # Update the CUs of the kernels to schedule
+    for kernel_idx in non_zero_kernels:
+        kernels_to_compare[kernel_idx]["cu"] = config_schedulable_kernels[kernel_idx]
+
+    # Get just the kernels to schedule
+    kernels_to_schedule = np.array(kernels_to_compare)[non_zero_kernels]
+
+    return kernels_to_schedule

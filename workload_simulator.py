@@ -21,7 +21,7 @@ from simulator import WorkloadSimulator
 parser = argparse.ArgumentParser(description="Simulation of a workload execution with the FPGA Workload Manager based on predictions from incremental learning models trained on-chip")
 parser.add_argument("--models_path", required=True, help="Path to the models")
 parser.add_argument("--workload_path", required=True, help="Path to the workload")
-parser.add_argument("--scheduling_policy", required=True, choices=['FCFS', 'STACK', 'SJF', 'LSIF', 'LOIF', 'CU'], help="Scheduling policy to use")
+parser.add_argument("--scheduling_policy", required=True, choices=['FCFS', 'STACK', 'SJF', 'LSIF', 'LOIF', 'CU', 'CSA'], help="Scheduling policy to use")
 parser.add_argument("--board", required=True, choices=['ZCU', 'PYNQ', 'AU250'], help="Type of board")
 args = parser.parse_args(sys.argv[1:])
 

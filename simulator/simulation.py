@@ -19,6 +19,13 @@ import time
 
 from .scheduling_policies import *
 
+# Test CSA TODO: Make it more general
+import sys
+
+sys.path.insert(1, '/media/juan/HDD/git_repos/fpga-scheduling/')
+
+import csa
+
 
 class WorkloadSimulator:
     """
@@ -46,6 +53,9 @@ class WorkloadSimulator:
         self.cpu_usage["kernel"] = random.uniform(10.0, 30.0)
         self.cpu_usage["idle"] = 100.0 - self.cpu_usage["user"] - self.cpu_usage["kernel"]
 
+        # Test CSA TODO: Make it more elegant
+        self.csa_scheduler = csa.CrowSearchAlgorithm(len(self.kernel_names), self.free_slots, kernel_names=self.kernel_names, models=self.models)
+
         # Dictionary to map scheduling policies to corresponding methods
         self.scheduling_methods = {
             'FCFS': fist_come_first_served_policy,
@@ -53,7 +63,8 @@ class WorkloadSimulator:
             'SJF': shortest_job_first_policy,
             'LSIF': least_self_interaction_first_policy,
             'LOIF': least_overall_interaction_first_policy,
-            'CU': cu_selection_policy
+            'CU': cu_selection_policy,
+            'CSA': csa_policy
         }
 
         # Set the scheduling policy
@@ -237,11 +248,20 @@ class WorkloadSimulator:
             return
 
         # Grab the kernel to be executed based on the scheduling policy
-        kernel = self.scheduler(self)
+        kernels = self.scheduler(self)
 
-        # Execute the kernel
-        if kernel:
-            self._execute_kernel(kernel)
+        # Check if there are kernels to be executed
+        if kernels is None:
+            return
+
+        # Check if the kernel is a list of kernels or a single kernel
+        if isinstance(kernels, np.ndarray):
+            # Execute the kernels in the list
+            for kernel in kernels:
+                self._execute_kernel(kernel)
+        else:
+            # Execute the kernel
+            self._execute_kernel(kernels)
 
     def run(self):
         """
