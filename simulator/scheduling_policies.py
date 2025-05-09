@@ -456,7 +456,7 @@ def csa_policy(self):
     """
     # TODO: Implement the scheduling algorithm
 
-    num_kernels_to_compare = 4
+    num_kernels_to_compare = 2
     kernels_to_compare = []
     kernels_to_compare_ids = []
 
@@ -495,9 +495,9 @@ def csa_policy(self):
     schedulable_kernels = [kernel["kernel_id"] for kernel in kernels_to_compare]
 
     # Schedule
-    config_schedulable_kernels = self.csa_scheduler.run_standalone(n_crows=5,
-                                      max_iter=10,
-                                      awareness_prob=0.4,
+    config_schedulable_kernels = self.csa_scheduler.run_standalone(n_crows=20,
+                                      max_iter=100,
+                                      awareness_prob=0.2,
                                       flight_length=1.5,
                                       running_kernels=running_kernels,
                                       schedulable_kernels=schedulable_kernels,
