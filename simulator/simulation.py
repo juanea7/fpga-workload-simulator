@@ -74,6 +74,11 @@ class WorkloadSimulator:
         else:
             raise ValueError(f"Invalid scheduling policy: {scheduling_policy}")
 
+        # tmp
+        self.cu_2 = 0
+        self.cu_4 = 0
+        self.cu_8 = 0
+
     def _update_current_time(self):
         """
         Update the current time of the simulation.
@@ -252,6 +257,7 @@ class WorkloadSimulator:
 
         # Check if there are kernels to be executed
         if kernels is None:
+            self.are_kernels_executable = False
             return
 
         # Check if the kernel is a list of kernels or a single kernel

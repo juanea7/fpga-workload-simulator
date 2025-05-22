@@ -449,6 +449,10 @@ def cu_selection_policy(self):
 
     return min_kernel
 
+    csa_policy.cu_2 = 0
+    csa_policy.cu_4 = 0
+    csa_policy.cu_8 = 0
+
 def csa_policy(self):
     """
     A scheduling policy that selects the kernel with the least overall interaction using a CSA.
@@ -456,9 +460,11 @@ def csa_policy(self):
     """
     # TODO: Implement the scheduling algorithm
 
-    num_kernels_to_compare = 2
+    num_kernels_to_compare = 3
     kernels_to_compare = []
     kernels_to_compare_ids = []
+
+    #tmp
 
     # Get the schedulable kernels
     for kernel in self.waiting_queue:
@@ -495,10 +501,10 @@ def csa_policy(self):
     schedulable_kernels = [kernel["kernel_id"] for kernel in kernels_to_compare]
 
     # Schedule
-    config_schedulable_kernels = self.csa_scheduler.run_standalone(n_crows=20,
-                                      max_iter=100,
-                                      awareness_prob=0.2,
-                                      flight_length=1.5,
+    config_schedulable_kernels = self.csa_scheduler.run_standalone(n_crows=4,
+                                      max_iter=4,
+                                      awareness_prob=0.6,
+                                      flight_length=4.5,
                                       running_kernels=running_kernels,
                                       schedulable_kernels=schedulable_kernels,
                                       cpu_usage=self.cpu_usage)
@@ -512,6 +518,14 @@ def csa_policy(self):
     # Update the CUs of the kernels to schedule
     for kernel_idx in non_zero_kernels:
         kernels_to_compare[kernel_idx]["cu"] = config_schedulable_kernels[kernel_idx]
+        # Update the CUs of the kernels to schedule
+        if config_schedulable_kernels[kernel_idx] == 2:
+            self.cu_2 += 1
+        elif config_schedulable_kernels[kernel_idx] == 4:
+            self.cu_4 += 1
+        elif config_schedulable_kernels[kernel_idx] == 8:
+            self.cu_8 += 1
+        print(f"CUs: 2 -> {self.cu_2}, 4 -> {self.cu_4}, 8 -> {self.cu_8}")
 
     # Get just the kernels to schedule
     kernels_to_schedule = np.array(kernels_to_compare)[non_zero_kernels]

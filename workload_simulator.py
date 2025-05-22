@@ -55,6 +55,8 @@ for i, workload in enumerate(workloads):
     # Append to the list of simulations
     simulations.append(sim)
 
+print("Cached Predictor Info:", simulations[0].csa_scheduler._cached_predict.cache_info())
+
 #
 # Simulation Execution
 #
@@ -77,3 +79,8 @@ print(f"total time: {total_time}")
 print(f"total wait time: {total_wait_time}")
 print(f"total decisions: {total_decisions}")
 print(f"affected decisions: {affected_decisions}")
+for i, sim in enumerate(simulations):
+    print(f"#{i} Cached Predictor Info:", sim.csa_scheduler._cached_predict.cache_info())
+
+simulations[0].csa_scheduler._cached_predict.cache_clear()
+print("Cached Predictor Info:", simulations[0].csa_scheduler._cached_predict.cache_info())
